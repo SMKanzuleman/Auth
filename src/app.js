@@ -3,8 +3,11 @@ const morgan =require('morgan');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const User = require('../models/users.model');
+const cookieParser = require('cookie-parser');
 const authRouter=require('../router/router.model.js');
 dotenv.config();
+
+
 
 const app = express();
 
@@ -26,6 +29,7 @@ const connectDb=async()=>{
 app.use(express.json());
 app.use(morgan('dev'));
 app.use('/api/auth/',authRouter)
+app.use(cookieParser());
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
