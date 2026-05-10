@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const User = require("../models/users.model");
+const Session = require("../models/session.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
@@ -33,33 +34,46 @@ authRouter.get("/getme", async (req, res) => {
 authRouter.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const isExist = await User.findOne({$or: [{ email }, { name }],});
-    if (isExist) 
-    {
-    res.json({ message: "User already exists" });
-    } 
-  else
-  {
-    const hashedPass = await bcrypt.hash(password, 10);
-    const newUser = new User({name,email,password: hashedPass,});
-    await newUser.save();
-    //
-    const accessToken = await jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "15m",});
-    const refreshToken = await jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "7d",});
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true , sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000,});
-    res.status(201).json({ message: "User registered successfully", user: newUser, accessToken });
-  }
+    const isExist = await User.findOne({ email });
+    if (isExist) {
+      res.json({ message: "User already exists" });
+    }
+    else {
+      const hashedPass = await bcrypt.hash(password, 10);
+      const newUser = new User({ name, email, password: hashedPass, });
+      await newUser.save();
+      const refreshToken = await jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "7d", });
+      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+      
+      const session = new Session({
+        userId: newUser._id,
+        rereshtokenHash: hashedRefreshToken,
+        iP: req.ip,
+        userAgent: req.headers["user-agent"],
+
+      })
+      const accessToken = await jwt.sign({
+        id: newUser._id,
+        sessionId: session._id,
+      },
+        JWT_SECRET,
+        {
+          expiresIn: "1m",
+        });
+
+      res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000, });
+      res.status(201).json({ message: "User registered successfully", user: newUser, accessToken });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-  
+
 });
 
 // refresh route {refresh access token}
-
-authRouter.get("/refresh", async (req,res) => {
+authRouter.get("/refresh", async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies ? req.cookies.refreshToken : null;
     if (!refreshToken) {
       return res.status(401).json({ message: "Refresh token not found" });
     }
@@ -67,9 +81,11 @@ authRouter.get("/refresh", async (req,res) => {
     if (!decoded) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
-    const accessToken = jwt.sign({ id: decoded.id }, JWT_SECRET, { expiresIn: "15m" });
+    const accessToken = jwt.sign({ id: decoded.id }, JWT_SECRET, { expiresIn: "1m" });
+    const newRefreshToken = jwt.sign({ id: decoded.id }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("refreshToken", newRefreshToken, { httpOnly: true, secure: false, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000, });
     res.json({ accessToken });
-    
+
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

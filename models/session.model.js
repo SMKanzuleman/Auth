@@ -1,0 +1,31 @@
+import mongoose from "mongoose";
+import { useImperativeHandle } from "react";
+
+const sessionSchema = new mongoose.Schema(
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        rereshtokenHash: {
+            type: String,
+            required: true [ "Refresh token hash is required" ],
+        },
+        iP: {
+            type: String ,
+            required: true [ "IP address is required" ],
+        },
+        userAgent: {
+            type: String,
+            required: true [ "User agent is required" ],
+        },
+        revoked: {
+            type: Boolean,
+            default: false,
+        }
+    }, { timestamps: true }
+)
+
+const Session = mongoose.model("Session", sessionSchema);
+export default Session;
