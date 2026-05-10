@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { useImperativeHandle } from "react";
 
 const sessionSchema = new mongoose.Schema(
     {
