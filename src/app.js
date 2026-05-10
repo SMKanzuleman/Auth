@@ -3,8 +3,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
-import User from './models/users.model.js'; 
-import authRouter from './router/router.model.js';
+import User from '../models/users.model.js'; 
+import authRouter from '../router/router.model.js';
 
 dotenv.config();
 

@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { generateOTP, getOTPhtml } from "../utils/utils.js";
 import Otp from "../models/otp.model.js";
 dotenv.config();
+const authRouter = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -244,4 +245,5 @@ authRouter.post("/logout-all", async (req, res) => {
   }
 })
 
-module.exports = authRouter;
+
+export default authRouter;
