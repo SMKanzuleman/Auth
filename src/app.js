@@ -1,10 +1,11 @@
-const express = require('express');
-const morgan =require('morgan');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const User = require('../models/users.model');
-const cookieParser = require('cookie-parser');
-const authRouter=require('../router/router.model.js');
+import express from 'express';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import User from './models/users.model.js'; 
+import authRouter from './router/router.model.js';
+
 dotenv.config();
 
 
