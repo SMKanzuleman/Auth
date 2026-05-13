@@ -1,10 +1,14 @@
 import React from 'react'
 import register from './components/register'
 
-export const App = () => {
+const App = () => {
   return (
     <div>
-      <register/>
+      <h1>Pakistan</h1>
     </div>
   )
 }
+
+export default App
+
+
