@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateOTP, getOTPhtml } from "../utils/utils.js";
 import Otp from "../models/otp.model.js";
+import { sendEmail } from "../services/email.servis.js";
 dotenv.config();
 const authRouter = Router();
 
@@ -34,6 +35,51 @@ authRouter.get("/getme", async (req, res) => {
 
 // Register Route
 
+// authRouter.post("/register", async (req, res) => {
+//   try {
+//     const { name, email, password } = req.body;
+
+//     const isExist = await User.findOne({ email });
+
+//     if (isExist) {
+//       res.json({ message: "User already exists" });
+//     }
+//     else {
+//       const hashedPass = await bcrypt.hash(password, 10);
+//       const newUser = new User({ name, email, password: hashedPass, });
+//       await newUser.save();
+
+//       const refreshToken = await jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "7d", });
+
+//       const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+//       const session = new Session({
+//         userId: newUser._id,
+//         rereshtokenHash: hashedRefreshToken,
+//         iP: req.ip,
+//         userAgent: req.headers["user-agent"],
+
+//       })
+//       const accessToken = await jwt.sign({
+//         id: newUser._id,
+//         sessionId: session._id,
+//       },
+//         JWT_SECRET,
+//         {
+//           expiresIn: "1m",
+//         });
+
+//       await session.save();
+
+//       res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000, });
+//       res.status(201).json({ message: "User registered successfully", user: newUser, accessToken });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+
+// });
+
 authRouter.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -48,30 +94,26 @@ authRouter.post("/register", async (req, res) => {
       const newUser = new User({ name, email, password: hashedPass, });
       await newUser.save();
 
-      const refreshToken = await jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "7d", });
+      //veriy email with OTP
+      const otp = generateOTP();
+      const html = getOTPhtml(otp);
 
-      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
 
-      const session = new Session({
-        userId: newUser._id,
-        rereshtokenHash: hashedRefreshToken,
-        iP: req.ip,
-        userAgent: req.headers["user-agent"],
+      const otpHash = await bcrypt.hash(otp, 10);
 
-      })
-      const accessToken = await jwt.sign({
-        id: newUser._id,
-        sessionId: session._id,
-      },
-        JWT_SECRET,
+      const newOtp = new Otp(
         {
-          expiresIn: "1m",
-        });
+          email: email,
+          userId: newUser._id,
+          otp: otpHash,
+        }
+      )
 
-      await session.save();
-
-      res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: false, sameSite: "strict", maxAge: 7 * 24 * 60 * 60 * 1000, });
-      res.status(201).json({ message: "User registered successfully", user: newUser, accessToken });
+      await newOtp.save();
+      console.log("sending otp to email", email);
+      sendEmail(email, "Verify your Account"," ", html)
+      console.log("OTP sent to email successfully!!!");
+      res.status(201).json({ message: "User registered successfully", user: newUser });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -87,6 +129,10 @@ authRouter.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email })
+
+    if (!user.verified) {
+      return res.status(400).json({ message: "Create & verify your account first" });
+    }
 
     if (user) {
 
@@ -131,7 +177,7 @@ authRouter.post("/login", async (req, res) => {
       else {
         res.status(400).json({ message: "Invalid credentials" })
       }
-  
+
     }
     else {
 
@@ -243,6 +289,33 @@ authRouter.post("/logout-all", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
+})
+
+authRouter.post("/verify-otp", async (req, res) => {
+  try {
+
+    const { email, otp } = req.body;
+
+    const foundedOtp = await Otp.findOne({ email });
+
+    if (!foundedOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const isMatch = await bcrypt.compare(otp, foundedOtp.otp);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const user = await User.findByIdAndUpdate(foundedOtp.userId, { verified: true });
+    res.json({ message: "Email verified successfully", user });
+
+  }catch (error) {
+
+  res.status(500).json({ message: error.message })
+
+}
 })
 
 
